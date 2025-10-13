@@ -7,6 +7,7 @@ package frc.robot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 
 public class RobotContainer {
 
@@ -15,12 +16,19 @@ public class RobotContainer {
 
 
   public RobotContainer() {
-  }
 
-  public void teleop() {
-    s_Drive.drive(driverJoystick.getRawAxis(1), driverJoystick.getRawAxis(4), driverJoystick.getRawButton(6), driverJoystick.getRawButton(1));
-  }
 
+    s_Drive.register();
+    
+    s_Drive.setDefaultCommand(
+      new RunCommand(
+        () -> s_Drive.drive(
+          driverJoystick.getRawAxis(1),
+          driverJoystick.getRawAxis(4),
+          driverJoystick.getRawButton(6),
+          driverJoystick.getRawButton(1)), 
+        s_Drive));
+  }
 
   public Command getAutonomousCommand() {
     return Commands.print("No autonomous command configured");

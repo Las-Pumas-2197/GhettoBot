@@ -10,7 +10,6 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
@@ -31,7 +30,10 @@ public class differentialdrive extends SubsystemBase {
   private final ADXRS450_Gyro gyro = new ADXRS450_Gyro();
   private final DifferentialDriveKinematics kine_drive = new DifferentialDriveKinematics(configuration.c_drivetrackwidth);
   private final DifferentialDriveOdometry odo_drive = new DifferentialDriveOdometry(new Rotation2d(Math.toRadians(gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
+
   private double d_drivespeedmult;
+  private double d_leftspeed;
+  private double d_rightspeed;
 
   public differentialdrive() {
     FL.configure(configuration.cfg_frontleft, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
@@ -45,6 +47,8 @@ public class differentialdrive extends SubsystemBase {
 
     //drive speed multiplier for controllability
     d_drivespeedmult = turbo_mode ? 1 : 0.25;
+
+    //reset encoders if true
     if(reset_enc){
       enc_R.setPosition(0);
       enc_L.setPosition(0);
@@ -54,30 +58,28 @@ public class differentialdrive extends SubsystemBase {
     ChassisSpeeds speeds = new ChassisSpeeds(Xspeed  * d_drivespeedmult * (-1), 0, Zspeed * (-1));
     DifferentialDriveWheelSpeeds wheelspeeds = kine_drive.toWheelSpeeds(speeds);
 
-    //update odometry
-    odo_drive.update(new Rotation2d(Math.toRadians(gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
+    //pass the speeds to persistent variables
+    d_leftspeed = wheelspeeds.leftMetersPerSecond;
+    d_rightspeed = wheelspeeds.rightMetersPerSecond;
 
-    //Telelmety
-    SmartDashboard.putNumber("X speed", speeds.vxMetersPerSecond);
-    SmartDashboard.putNumber("Rotation", speeds.omegaRadiansPerSecond);
-    SmartDashboard.putNumber("Left Speed", wheelspeeds.leftMetersPerSecond);
-    SmartDashboard.putNumber("Right Speed", wheelspeeds.rightMetersPerSecond);
-    SmartDashboard.putNumber("Drive Speed Mult", d_drivespeedmult);
-    // Encoder Telemetry
-    SmartDashboard.putNumber("RightPos", enc_R.getPosition());
-    SmartDashboard.putNumber("LeftPos", enc_L.getPosition());
+    //apply volts to motors
     RL.setVoltage(wheelspeeds.leftMetersPerSecond * 12);
     RR.setVoltage(wheelspeeds.rightMetersPerSecond * 12);
 
-    SmartDashboard.putNumber("Xpos", odo_drive.getPoseMeters().getX());
-    SmartDashboard.putNumber("Ypos", odo_drive.getPoseMeters().getY());
   }
 
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
-  
+    odo_drive.update(new Rotation2d(Math.toRadians(gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
 
-    
+    //telemetry
+    SmartDashboard.putNumber("Xpos", odo_drive.getPoseMeters().getX());
+    SmartDashboard.putNumber("Ypos", odo_drive.getPoseMeters().getY());
+    SmartDashboard.putNumber("Left Speed", d_leftspeed);
+    SmartDashboard.putNumber("Right Speed", d_rightspeed);
+    SmartDashboard.putNumber("Drive Speed Mult", d_drivespeedmult);
+    SmartDashboard.putNumber("RightPos", enc_R.getPosition());
+    SmartDashboard.putNumber("LeftPos", enc_L.getPosition());
   }
 }
