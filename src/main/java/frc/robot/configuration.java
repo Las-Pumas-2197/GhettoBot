@@ -19,7 +19,7 @@ public class configuration {
 
   //misc drive subsystem parameters
   public static final int c_drivecurrentlimit = 50;
-  public static final double c_drivespeedmax = 1; //meters per second
+  public static final double c_drivespeedmax = 4.22891; //meters per second
   public static final double c_driveconvfactor = (0.47877/10.71);
   public static final double c_drivetrackwidth = Units.inchesToMeters(21.875);
 
@@ -32,19 +32,23 @@ public class configuration {
     cfg_frontleft.smartCurrentLimit(c_drivecurrentlimit);
     cfg_frontleft.follow(c_RLcanID);
     cfg_frontleft.encoder.positionConversionFactor(c_driveconvfactor);
+    cfg_frontleft.encoder.velocityConversionFactor(c_driveconvfactor / 60);
 
     cfg_frontright.smartCurrentLimit(c_drivecurrentlimit);
     cfg_frontright.follow(c_RRcanID);
     cfg_frontright.encoder.positionConversionFactor(c_driveconvfactor);
+    cfg_frontright.encoder.velocityConversionFactor(c_driveconvfactor / 60);
 
     cfg_frontright.inverted(true);
 
     cfg_rearleft.smartCurrentLimit(c_drivecurrentlimit);
     cfg_rearleft.encoder.positionConversionFactor(c_driveconvfactor);
+    cfg_rearleft.encoder.velocityConversionFactor(c_driveconvfactor / 60);
 
     cfg_rearright.smartCurrentLimit(c_drivecurrentlimit);
     cfg_rearright.inverted(true);
     cfg_rearright.encoder.positionConversionFactor(c_driveconvfactor);
+    cfg_rearright.encoder.velocityConversionFactor(c_driveconvfactor / 60);
   }
 
 }
