@@ -13,6 +13,8 @@ import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -20,6 +22,8 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -37,7 +41,8 @@ public class differentialdrive extends SubsystemBase {
   private final RelativeEncoder enc_R = FR.getEncoder();
   private final ADXRS450_Gyro gyro = new ADXRS450_Gyro();
   private final DifferentialDriveKinematics kine_drive = new DifferentialDriveKinematics(configuration.c_drivetrackwidth);
-  private final DifferentialDriveOdometry odo_drive = new DifferentialDriveOdometry(new Rotation2d(Math.toRadians(-gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
+  // private final DifferentialDriveOdometry odo_drive = new DifferentialDriveOdometry(new Rotation2d(Math.toRadians(-gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
+  private final DifferentialDrivePoseEstimator pe_drive = new DifferentialDrivePoseEstimator(kine_drive, new Rotation2d(Math.toRadians(-gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition(), getPose());
   private RobotConfig robotConfig;
 
   private final Field2d field = new Field2d();
@@ -117,11 +122,11 @@ public class differentialdrive extends SubsystemBase {
   }
 
   public Pose2d getPose() {
-    return odo_drive.getPoseMeters();
+    return pe_drive.getEstimatedPosition();
   }
 
   public void resetOdometry(Pose2d pose) {
-    odo_drive.resetPose(pose);
+    pe_drive.resetPose(pose);
   }
 
   public ChassisSpeeds getSpeeds() {
@@ -141,6 +146,13 @@ public class differentialdrive extends SubsystemBase {
     RR.setVoltage((wheelspeeds.rightMetersPerSecond / configuration.c_drivespeedmax)* 12);
   }
 
+  public void addVisionMeasurement(Pair<Pose2d, Double> estimate) {
+    if (estimate != null) {
+      pe_drive.addVisionMeasurement(estimate.getFirst(), estimate.getSecond());
+    }
+
+  }
+
   @Override
   public void periodic() {
 
@@ -148,11 +160,11 @@ public class differentialdrive extends SubsystemBase {
     field.setRobotPose(this.getPose());
 
     //update odometry
-    odo_drive.update(new Rotation2d(Math.toRadians(-gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
+    pe_drive.update(new Rotation2d(Math.toRadians(-gyro.getAngle())), enc_L.getPosition(), enc_R.getPosition());
 
     //telemetry
-    SmartDashboard.putNumber("Xpos", odo_drive.getPoseMeters().getX());
-    SmartDashboard.putNumber("Ypos", odo_drive.getPoseMeters().getY());
+    SmartDashboard.putNumber("Xpos", pe_drive.getEstimatedPosition().getX());
+    SmartDashboard.putNumber("Ypos", pe_drive.getEstimatedPosition().getY());
     SmartDashboard.putNumber("Left Speed", d_leftspeed);
     SmartDashboard.putNumber("Right Speed", d_rightspeed);
     SmartDashboard.putNumber("Drive Speed Mult", d_drivespeedmult);

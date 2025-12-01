@@ -4,8 +4,7 @@
 
 package frc.robot;
 
-import static edu.wpi.first.wpilibj2.command.Commands.runEnd;
-import static edu.wpi.first.wpilibj2.command.Commands.runOnce;
+import static edu.wpi.first.wpilibj2.command.Commands.*;
 
 import java.util.Optional;
 
@@ -30,7 +29,9 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.Unit;
+import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
@@ -44,7 +45,7 @@ public class RobotContainer {
   private SparkMax leftWheel = new SparkMax(12, MotorType.kBrushed);
   private SparkMax rightWheel = new SparkMax(13, MotorType.kBrushed);
   private Pose2d targetpose = new Pose2d(7, 2, new Rotation2d());
-  private Vision vision = new Vision(null, null)
+  private final Vision m_vision = new Vision();
 
   public RobotContainer() {
 
@@ -75,7 +76,8 @@ public class RobotContainer {
     // vision
     
   }
-
+  
+  
   //put bindings here, duh
   public void configureButtonBindings() {
     driverJoystick.button(1).onTrue(runOnce(() -> s_Drive.resetOdometry(new Pose2d())));
@@ -92,40 +94,6 @@ public class RobotContainer {
         0.0);
       pathfindingCommand.addRequirements(this.s_Drive);
       return pathfindingCommand;
-  }
-
-  public void updatevision() {
-    Optional<EstimatedRobotPose> leftPoseVisionEst = Optional.empty();
-    for (var change : leftCamera.getAllUnreadResults()) {
-      leftPoseVisionEst = leftPoseEstimator.update(change);
-      // updateEstimationStdDevs(visionEst, change.getTargets());
-
-    //   if (Robot.isSimulation()) {
-    //       visionEst.ifPresentOrElse(
-    //               est ->
-    //                       getSimDebugField()
-    //                               .getObject("VisionEstimation")
-    //                               .setPose(est.estimatedPose.toPose2d()),
-    //               () -> {
-    //                   getSimDebugField().getObject("VisionEstimation").setPoses();
-    //               });
-    //   }
-
-    //   visionEst.ifPresent(
-    //           est -> {
-    //               // Change our trust in the measurement based on the tags we can see
-    //               var estStdDevs = getEstimationStdDevs();
-
-    //               estConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, estStdDevs);
-    //           });
-    // }
-    
-    }
-
-    Optional<EstimatedRobotPose> rightPoseVisionEst = Optional.empty();
-    for (var change : leftCamera.getAllUnreadResults()) {
-      rightPoseVisionEst = leftPoseEstimator.update(change);
-    }
   }
 
   //format autochooser command here for Robot.java

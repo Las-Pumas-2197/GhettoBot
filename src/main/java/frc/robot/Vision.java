@@ -3,8 +3,10 @@ package frc.robot;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -12,8 +14,13 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
@@ -30,24 +37,14 @@ public class Vision {
   private final PhotonPoseEstimator leftPhotonPoseEstimator;
   private final PhotonPoseEstimator rightPhotonPoseEstimator;
 
-  private Matrix<N3, N1> curStdDevs;
-  private final EstimateConsumer leftEstConsumer;
-  private final EstimateConsumer rightEstConsumer;
+  List<Optional<EstimatedRobotPose>> vision = new ArrayList<Optional<EstimatedRobotPose>>();
 
-  // Simulation
-  private PhotonCameraSim cameraSim;
-  private VisionSystemSim visionSim;
+  // private Matrix<N3, N1> curStdDevs;
 
   public static final Matrix<N3, N1> kSingleTagStdDevs = VecBuilder.fill(4, 4, 8);
   public static final Matrix<N3, N1> kMultiTagStdDevs = VecBuilder.fill(0.5, 0.5, 1);
 
-  /**
-   * @param estConsumer Lamba that will accept a pose estimate and pass it to your desired {@link
-   *     edu.wpi.first.math.estimator.SwerveDrivePoseEstimator}
-   */
-  public Vision(EstimateConsumer leftEstConsumer, EstimateConsumer rightEstConsumer) {
-      this.leftEstConsumer = leftEstConsumer;
-      this.rightEstConsumer = rightEstConsumer;
+  public Vision() {
 
       leftCamera = new PhotonCamera("LeftCamera");
       rightCamera = new PhotonCamera("RightCamera");
@@ -83,31 +80,90 @@ public class Vision {
       rightPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.LOWEST_AMBIGUITY);
   }
 
-  public void periodic() {
+  public Pair<Pose2d, Double> poseEstimate() {
+
+    vision.clear();
     Optional<EstimatedRobotPose> leftVisionEst = Optional.empty();
     Optional<EstimatedRobotPose> rightVisionEst = Optional.empty();
+    Pose2d pose = Pose2d.kZero;
 
     for (var change : leftCamera.getAllUnreadResults()) {
-        leftVisionEst = leftPhotonPoseEstimator.update(change);
-        // updateEstimationStdDevs(leftVisionEst, change.getTargets());
-
-        leftVisionEst.ifPresent(
-                est -> {
-                    leftEstConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, getEstimationStdDevs());
-                });
+      leftVisionEst = leftPhotonPoseEstimator.update(change);
     }
 
     for (var change : rightCamera.getAllUnreadResults()) {
-      leftVisionEst = rightPhotonPoseEstimator.update(change);
-      // updateEstimationStdDevs(rightVisionEst, change.getTargets());
-
-      rightVisionEst.ifPresent(
-              est -> {
-                  rightEstConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, getEstimationStdDevs());
-              });
+      rightVisionEst = rightPhotonPoseEstimator.update(change);
     }
+
+    if (leftVisionEst.isPresent()) {vision.add(leftVisionEst);}
+    if (rightVisionEst.isPresent()) {vision.add(rightVisionEst);}
+
+    if (vision.size() != 0) {
+      pose = vision.get(0).get().estimatedPose.toPose2d();
+      if (vision.size() > 1) {
+        pose = vision.get(0).get().estimatedPose.toPose2d();
+        pose = pose.interpolate(vision.get(1).get().estimatedPose.toPose2d(), 0.5);
+      }
+    }
+
+    if (!vision.isEmpty()) {
+      return new Pair<Pose2d,Double>(pose, vision.get(0).get().timestampSeconds);
+    } else {
+      return null;
+    }
+
   }
 
+  public void periodic() {
+
+   
+
+    // leftVisionEst.ifPresent(
+    //   est -> {
+    //       leftEstConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, kSingleTagStdDevs);
+    //   });
+
+    // rightVisionEst.ifPresent(
+    //   est -> {
+    //       rightEstConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, kSingleTagStdDevs);
+    //   });
+
+
+  }
+
+  // public void updatevision() {
+    // Optional<EstimatedRobotPose> leftPoseVisionEst = Optional.empty();
+    // for (var change : leftCamera.getAllUnreadResults()) {
+    //   leftPoseVisionEst = leftPhotonPoseEstimator.update(change);
+      // updateEstimationStdDevs(visionEst, change.getTargets());
+
+    //   if (Robot.isSimulation()) {
+    //       visionEst.ifPresentOrElse(
+    //               est ->
+    //                       getSimDebugField()
+    //                               .getObject("VisionEstimation")
+    //                               .setPose(est.estimatedPose.toPose2d()),
+    //               () -> {
+    //                   getSimDebugField().getObject("VisionEstimation").setPoses();
+    //               });
+    //   }
+
+    //   visionEst.ifPresent(
+    //           est -> {
+    //               // Change our trust in the measurement based on the tags we can see
+    //               var estStdDevs = getEstimationStdDevs();
+
+    //               estConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, estStdDevs);
+    //           });
+    // }
+    
+    // }
+
+    // Optional<EstimatedRobotPose> rightPoseVisionEst = Optional.empty();
+    // for (var change : leftCamera.getAllUnreadResults()) {
+    //   rightPoseVisionEst = leftPhotonPoseEstimator.update(change);
+    // }
+  // }
   /**
    * Calculates new standard deviations This algorithm is a heuristic that creates dynamic standard
    * deviations based on number of tags, estimation strategy, and distance from the tags.
@@ -163,9 +219,9 @@ public class Vision {
    * edu.wpi.first.math.estimator.SwerveDrivePoseEstimator SwerveDrivePoseEstimator}. This should
    * only be used when there are targets visible.
    */
-  public Matrix<N3, N1> getEstimationStdDevs() {
-      return kSingleTagStdDevs;
-  }
+  // public Matrix<N3, N1> getEstimationStdDevs() {
+  //     return kSingleTagStdDevs;
+  // }
 
   @FunctionalInterface
   public static interface EstimateConsumer {
